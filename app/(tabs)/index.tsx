@@ -3,6 +3,14 @@ import { Animated, Easing, Image, StyleSheet, Text, TextInput, TouchableOpacity,
 
 const MAX_HEARTS = 5;
 
+// キャラ状態を定義（追加しやすくするため）
+const CHARACTER_STATES = {
+  NORMAL: 'normal',
+  MOUTH_OPEN: 'mouthOpen',
+  // 今後 chewing, digesting などを追加しやすい
+};
+
+
 export default function HomeScreen() {
   const [hearts, setHearts] = useState(MAX_HEARTS);
   const [isTyping, setIsTyping] = useState(false);  // テキスト入力中かどうかの状態
@@ -10,6 +18,11 @@ export default function HomeScreen() {
 
   const swayAnim = useRef(new Animated.Value(0)).current; // 草の揺れアニメーション用
   const floatAnim = useRef(new Animated.Value(0)).current; // キャラの上下ぴょこぴょこアニメーション用
+
+  const [displayedText, setDisplayedText] = useState('');
+  const [showTextEffect, setShowTextEffect] = useState(false);
+
+  const [characterState, setCharacterState] = useState(CHARACTER_STATES.NORMAL); // キャラ状態
 
   useEffect(() => {
     // 草の揺れアニメーションを設定
@@ -54,20 +67,49 @@ export default function HomeScreen() {
     }
   };
 
-  const handleSubmitStress = () => {
+  // ストレスを食べてもらうボタンが押されたときの処理
+  const handleSubmitStress = async () => {
     if (stressText.trim() !== '') {
-      setHearts((prev) => prev - 1); // ハート減少
-      console.log(`"${stressText}" をキャラが食べました！`);
-      // TODO: アニメやうんち生成など
+      setIsTyping(false); // 入力UIを消す
+      setDisplayedText(''); // 表示をリセット
+      setShowTextEffect(true);
+      // await playTypewriterSound(); // 音だけ先に鳴らす
+
+      // 高速表示
+      const chars = stressText.split('');
+      let current = '';
+      chars.forEach((char, index) => {
+        setTimeout(() => {
+          current += char;
+          setDisplayedText(current);
+          if (index === chars.length - 1) {
+             setTimeout(() => {
+              setCharacterState(CHARACTER_STATES.MOUTH_OPEN);
+            }, 1000); // 1秒後に口を開ける
+            // 最後の文字で何か処理可能（例: 手紙表示→吸い込み）
+          }
+        }, index * 50); // 50msごとに1文字表示（速め）
+      });
+
       setStressText('');
-      setIsTyping(false); // 入力完了 → ボタン再表示
+      setHearts((prev) => prev - 1);
     }
   };
 
+  // キャラ状態に応じた画像を返す（変更点）
+  const getCharacterImage = () => {
+    switch (characterState) {
+      case CHARACTER_STATES.MOUTH_OPEN:
+        return require('@/assets/images/bird1-mouth-open.png');
+      case CHARACTER_STATES.NORMAL:
+      default:
+        return require('@/assets/images/bird1.png');
+    }
+  };
 
   return (
     <View style={styles.background}>
-      {/* 草アニメーション */}
+      {/* 草アニメーション
       <Animated.Image
         source={require('@/assets/images/react-logo.png')} // 静止草画像を用意してください
         style={[
@@ -83,7 +125,7 @@ export default function HomeScreen() {
             ],
           },
         ]}
-      />
+      /> */}
 
       {/* ハート表示 */}
       <View style={styles.heartContainer}>
@@ -103,7 +145,7 @@ export default function HomeScreen() {
       {/* キャラ表示（仮イメージ） */}
       <View style={styles.characterContainer}>
         <Animated.Image
-          source={require('@/assets/images/bird1.png')} // アニメーションなしの固定キャラ画像
+          source={getCharacterImage()} // 画像取得を状態に応じて変更
           style={[
             styles.character,
             {
@@ -120,7 +162,8 @@ export default function HomeScreen() {
   
 
       {/* 入力欄 or ボタン */}
-      {isTyping ? (
+      {!showTextEffect && ( 
+        isTyping ? (
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -129,15 +172,26 @@ export default function HomeScreen() {
             onChangeText={setStressText}
             multiline
           />
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmitStress}>
-            <Text style={styles.buttonText}>食べてもらう！</Text>
-          </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={handleSubmitStress}>
+          <Text style={styles.buttonText}>ストレスを食べてもらう</Text>
+        </TouchableOpacity>
         </View>
       ) : (
         <TouchableOpacity style={styles.button} onPress={handleEatStress}>
           <Text style={styles.buttonText}>ストレスを食べてもらう</Text>
         </TouchableOpacity>
+      )
       )}
+
+      {/* 表示中の文字（ふわっと出現） */}
+      {showTextEffect && (
+        <View style={styles.letterContainer}>
+          <Text style={styles.stressTextDisplay}>{displayedText}</Text>
+        </View>
+      
+      )}
+
+      
     </View>
   );
 }
@@ -209,4 +263,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 20,
   },
+    letterContainer: {
+    marginTop: 30,
+    paddingHorizontal: 20,
+  },
+  stressTextDisplay: {
+    fontSize: 20,
+    fontFamily: 'System', // 必要に応じて可愛いフォントに差し替え
+    textAlign: 'center',
+    color: '#444',
+  },
+
 });
