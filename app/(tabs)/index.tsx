@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { useAbsorbAnimation } from '@/animations/useAbsorbAnimation';
+
 const MAX_HEARTS = 5;
 
 // キャラ状態を定義（追加しやすくするため）
@@ -23,6 +25,17 @@ export default function HomeScreen() {
   const [showTextEffect, setShowTextEffect] = useState(false);
 
   const [characterState, setCharacterState] = useState(CHARACTER_STATES.NORMAL); // キャラ状態
+
+  // 追加: 吸収アニメーション用フックから取得
+  const {
+    rotateAnim,
+    scaleAnim,
+    translateXAnim,
+    translateYAnim,
+    startAbsorbAnimation,
+  } = useAbsorbAnimation(() => {
+    setShowTextEffect(false);
+  });
 
   useEffect(() => {
     // 草の揺れアニメーションを設定
@@ -69,6 +82,10 @@ export default function HomeScreen() {
 
   // ストレスを食べてもらうボタンが押されたときの処理
   const handleSubmitStress = async () => {
+    rotateAnim.setValue(0);
+    scaleAnim.setValue(1);
+    translateXAnim.setValue(0);
+    translateYAnim.setValue(0);
     if (stressText.trim() !== '') {
       setIsTyping(false); // 入力UIを消す
       setDisplayedText(''); // 表示をリセット
@@ -85,6 +102,9 @@ export default function HomeScreen() {
           if (index === chars.length - 1) {
              setTimeout(() => {
               setCharacterState(CHARACTER_STATES.MOUTH_OPEN);
+              setTimeout(() => {
+                startAbsorbAnimation(); // 吸収アニメーション開始
+              }, 1000); // 1秒後にアニメーション開始
             }, 1000); // 1秒後に口を開ける
             // 最後の文字で何か処理可能（例: 手紙表示→吸い込み）
           }
@@ -184,13 +204,33 @@ export default function HomeScreen() {
       )}
 
       {/* 表示中の文字（ふわっと出現） */}
-      {showTextEffect && (
-        <View style={styles.letterContainer}>
-          <Text style={styles.stressTextDisplay}>{displayedText}</Text>
-        </View>
-      
-      )}
+  {showTextEffect && (
 
+    <Animated.View
+      style={[
+        styles.letterContainer,
+        {
+          transform: [
+            { translateX: translateXAnim },
+            { translateY: translateYAnim },           
+            {
+              rotate: rotateAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0deg', '720deg'],
+              }),
+            },
+            { scale: scaleAnim },
+
+          ],
+        },
+      ]}
+    >
+      <Animated.Text style={styles.stressTextDisplay}>
+        {displayedText}
+      </Animated.Text>
+    </Animated.View>
+
+)}  
       
     </View>
   );
@@ -263,9 +303,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 20,
   },
-    letterContainer: {
+  letterWrapper: {
+    position: 'absolute',
+    top: '60%', // 初期の表示位置（キャラの上に調整）
+    left: '20%', // 必要に応じて位置調整
+    width: 200,
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  letterContainer: {
+    // position: 'absolute',
+    // top: '60%',
     marginTop: 30,
     paddingHorizontal: 20,
+    // backgroundColor: 'rgba(255,0,0,0.2)', // デバッグ用
   },
   stressTextDisplay: {
     fontSize: 20,
