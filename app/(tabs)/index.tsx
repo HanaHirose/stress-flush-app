@@ -4,6 +4,8 @@ import { Animated, Easing, Image, StyleSheet, Text, TextInput, TouchableOpacity,
 import { useAbsorbAnimation } from '@/animations/useAbsorbAnimation';
 import { useRainbowAnimation } from '@/animations/useRainbowAnimation';
 
+import { Audio } from 'expo-av';
+
 const MAX_HEARTS = 5;
 
 // キャラ状態を定義（追加しやすくするため）
@@ -26,6 +28,25 @@ export default function HomeScreen() {
   const [showTextEffect, setShowTextEffect] = useState(false);
 
   const [characterState, setCharacterState] = useState(CHARACTER_STATES.NORMAL); // キャラ状態
+
+  const rainbowSoundRef = useRef<Audio.Sound | null>(null);
+
+  const playRainbowSound = async () => {
+  try {
+    const { sound } = await Audio.Sound.createAsync(
+      require('@/assets/sounds/kirakira.mp3') // 音声ファイルのパス
+    );
+    await sound.playAsync();
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (status.isLoaded && status.didJustFinish) {
+        sound.unloadAsync(); // 再生終了後に解放
+      }
+    });
+  } catch (error) {
+    console.warn('音声再生に失敗しました:', error);
+  }
+};
+
 
   // 追加: 吸収アニメーション用フックから取得
   const {
@@ -111,6 +132,7 @@ export default function HomeScreen() {
              setTimeout(() => {
               setCharacterState(CHARACTER_STATES.MOUTH_OPEN);
               animateRainbowIn(); // 虹アニメーション開始
+              playRainbowSound();
               setTimeout(() => {
                 startAbsorbAnimation(); // 吸収アニメーション開始
               }, 1000); // 1秒後にアニメーション開始
@@ -137,6 +159,24 @@ export default function HomeScreen() {
     }
   };
 
+  // 音声再生関数（追加）
+  const playSound = async () => {
+  try {
+    const { sound } = await Audio.Sound.createAsync(
+      require('@/assets/sounds/Enter32.mp3') // 音声ファイルのパス
+    );
+    await sound.playAsync();
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (status.isLoaded && status.didJustFinish) {
+        sound.unloadAsync(); // 再生終了後に解放
+      }
+    });
+  } catch (error) {
+    console.warn('音声再生に失敗しました:', error);
+  }
+};
+
+  
   return (
     <View style={styles.background}>
       {/* 草アニメーション
@@ -224,12 +264,17 @@ export default function HomeScreen() {
             onChangeText={setStressText}
             multiline
           />
-        <TouchableOpacity style={styles.button} onPress={handleSubmitStress}>
+        <TouchableOpacity style={styles.button} 
+        onPress={() => {
+          playSound();
+          handleSubmitStress();
+        }}>
           <Text style={styles.buttonText}>ストレスを食べてもらう</Text>
         </TouchableOpacity>
         </View>
       ) : (
-        <TouchableOpacity style={styles.button} onPress={handleEatStress}>
+        <TouchableOpacity style={styles.button} 
+        onPress={handleEatStress}>
           <Text style={styles.buttonText}>ストレスを食べてもらう</Text>
         </TouchableOpacity>
       )
