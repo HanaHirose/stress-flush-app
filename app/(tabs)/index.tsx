@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { useAbsorbAnimation } from '@/animations/useAbsorbAnimation';
+import { useRainbowAnimation } from '@/animations/useRainbowAnimation';
 
 const MAX_HEARTS = 5;
 
@@ -35,7 +36,14 @@ export default function HomeScreen() {
     startAbsorbAnimation,
   } = useAbsorbAnimation(() => {
     setShowTextEffect(false);
+    animateRainbowOut();
   });
+
+  const {
+    rainbowProgress,
+    animateRainbowIn,
+    animateRainbowOut,
+  } = useRainbowAnimation(); // ⭐ 虹アニメーションのフック使用
 
   useEffect(() => {
     // 草の揺れアニメーションを設定
@@ -102,10 +110,12 @@ export default function HomeScreen() {
           if (index === chars.length - 1) {
              setTimeout(() => {
               setCharacterState(CHARACTER_STATES.MOUTH_OPEN);
+              animateRainbowIn(); // 虹アニメーション開始
               setTimeout(() => {
                 startAbsorbAnimation(); // 吸収アニメーション開始
               }, 1000); // 1秒後にアニメーション開始
             }, 1000); // 1秒後に口を開ける
+            animateRainbowOut(); // ⭐ 吸い込み後、虹をしまう
             // 最後の文字で何か処理可能（例: 手紙表示→吸い込み）
           }
         }, index * 50); // 50msごとに1文字表示（速め）
@@ -179,7 +189,29 @@ export default function HomeScreen() {
       <TouchableOpacity style={styles.button} onPress={handleEatStress}>
         <Text style={styles.buttonText}>ストレスを食べてもらう</Text>
       </TouchableOpacity> */}
-  
+
+
+        {/* ⭐ 虹アニメーション表示エリア */}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          top: 400, // 🛠 キャラ口のY位置に応じて微調整
+          left: '50%',
+          marginLeft: -200, // 虹の幅が400なら中央に調整
+          width: 400,
+          height: rainbowProgress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 150], // 虹の最大長さ
+          }),
+          overflow: 'hidden',
+          zIndex: 5,
+        }}
+      >
+        <Image
+          source={require('@/assets/images/Niji2.png')}
+          style={{ height: 400, resizeMode: 'cover' }} // 高さ400の画像を上から表示
+        />
+      </Animated.View>
 
       {/* 入力欄 or ボタン */}
       {!showTextEffect && ( 
@@ -314,10 +346,11 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   letterContainer: {
-    // position: 'absolute',
-    // top: '60%',
+    position: 'absolute',
+    top: '60%',
     marginTop: 30,
     paddingHorizontal: 20,
+    zIndex: 10,
     // backgroundColor: 'rgba(255,0,0,0.2)', // デバッグ用
   },
   stressTextDisplay: {
